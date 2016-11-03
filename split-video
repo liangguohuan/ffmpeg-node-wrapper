@@ -1,0 +1,107 @@
+#!/usr/bin/env node
+
+// Brief: This is a shell script for spliting video via ffmpeg.
+
+// require libs
+var fs = require('fs');
+var path = require('path');
+var process = require('process');
+var util = require('util');
+var printf = require('printf');
+var moment = require('moment');
+var ffmpeg = require('fluent-ffmpeg');
+
+// help message
+function help(exitcode = 0) {
+  console.log('Desc:');
+  console.log(' This is a shell script file for spliting video via ffmpeg.');
+  console.log('');
+  console.log('Command:');
+  console.log(' split-video [opt]... [inputfile] [starttime] [endtime]');
+  console.log('');
+  console.log('Options:');
+  console.log(' -i | --inputfile          inputfile to be split.');
+  console.log(' -s | --starttime          split from time, format: [hh:mm:ss]');
+  console.log(' -e | --endtime            split end time, format:  [hh:mm:ss]');
+  console.log(' -o | --outputfile         specifies the outputfile');
+  console.log(' -p | --path               output path, defualt: "/tmp/output"');
+  console.log(' -a | --samedir            outputfile in the same dir, will auto rename outputfile');
+  console.log(' -h | --help               print helps');
+  process.exit(exitcode);
+}
+
+// debug mode setting
+debug = true;
+
+// shell argv define
+var argv = require('yargs')
+  .alias('i', 'inputfile')
+  .alias('s', 'starttime')
+  .alias('e', 'endtime')
+  .alias('p', 'path')
+  .alias('o', 'outputfile')
+  .alias('a', 'samedir')
+  .alias('h', 'help')
+  .argv;
+
+// init variables
+var outputpath_default = '/tmp/output'
+var inputfile  = argv.i == undefined ? argv._[0] : argv.i;
+var st         = argv.s == undefined ? argv._[1] : argv.s;
+var se         = argv.e == undefined ? argv._[2] : argv.e;
+var samedir    = argv.a == undefined ? false : true;
+var output     = argv.p == undefined ? outputpath_default : argv.p;
+var outputfile = argv.o;
+
+// print help message
+if (argv.h != undefined) { help(); }
+if (inputfile == undefined) { help(1); }
+
+// debug mode
+if (debug) { console.log(argv); }
+
+// check inputfile exists
+if (!fs.existsSync(inputfile + '')) {
+  console.error('inputfile doesnt exists!!');
+  process.exit(1);
+}
+
+// outputfile handle
+if (samedir) {
+  var output = path.dirname(inputfile);
+  var extname = path.extname(inputfile);
+  var outputfile = inputfile.replace( extname, printf('-%s-temp%s', moment().format('X'), extname) )
+} else if (outputfile == undefined) {
+  var basename = path.basename(inputfile);
+  var outputfile = output + '/' + basename;
+} else {
+  var output = path.dirname(outputfile);
+}
+
+// create ouput dir if it doesnt exists
+if (!fs.existsSync(output + '')) {
+  fs.mkdir(output);
+}
+
+// count the duration via starttime and endtime 
+var dura = moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds')
+
+// main code
+ffmpeg(inputfile)
+  .audioCodec('copy')
+  .videoCodec('copy')
+  .on('start', function(commandLine) {
+    console.log(commandLine);
+  })
+  .on('end', function(stdout, stderr) {
+    util.log( 'Successed!' )
+  })
+  .setStartTime(st)
+  .setDuration(dura)
+  .save( outputfile )
+
+
+
+
+
+// vim: filetype=javascript syntax=javascript fdm=syntax ts=2 sw=2 sts=2 expandtab

@@ -1,0 +1,20 @@
+{
+  "name": "split-video",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "fluent-ffmpeg": "^2.1.0",
+    "yargs": "^6.3.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "hanson",
+  "license": "MIT",
+  "bin": {
+      "split-video": "split-video",
+      "join-video": "join-video"
+  }
+}

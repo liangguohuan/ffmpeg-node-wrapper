@@ -31,7 +31,7 @@ function help(exitcode = 0) {
 }
 
 // debug mode setting
-debug = true;
+var debug = true;
 
 // shell argv define
 var argv = require('yargs')
@@ -45,17 +45,17 @@ var argv = require('yargs')
   .argv;
 
 // init variables
-var outputpath_default = '/tmp/output'
-var inputfile  = argv.i == undefined ? argv._[0] : argv.i;
-var st         = argv.s == undefined ? argv._[1] : argv.s;
-var se         = argv.e == undefined ? argv._[2] : argv.e;
-var samedir    = argv.a == undefined ? false : true;
-var output     = argv.p == undefined ? outputpath_default : argv.p;
+var outputpath_default = '/tmp/output';
+var inputfile  = argv.i === undefined ? argv._[0] : argv.i;
+var st         = argv.s === undefined ? argv._[1] : argv.s;
+var se         = argv.e === undefined ? argv._[2] : argv.e;
+var samedir    = argv.a === undefined ? false : true;
+var output     = argv.p === undefined ? outputpath_default : argv.p;
 var outputfile = argv.o;
 
 // print help message
-if (argv.h != undefined) { help(); }
-if (inputfile == undefined) { help(1); }
+if (argv.h !== undefined) { help(); }
+if (inputfile === undefined) { help(1); }
 
 // debug mode
 if (debug) { console.log(argv); }
@@ -70,8 +70,8 @@ if (!fs.existsSync(inputfile + '')) {
 if (samedir) {
   var output = path.dirname(inputfile);
   var extname = path.extname(inputfile);
-  var outputfile = inputfile.replace( extname, printf('-%s-temp%s', moment().format('X'), extname) )
-} else if (outputfile == undefined) {
+  var outputfile = inputfile.replace( extname, printf('-%s-temp%s', moment().format('X'), extname) );
+} else if (outputfile === undefined) {
   var basename = path.basename(inputfile);
   var outputfile = output + '/' + basename;
 } else {
@@ -84,7 +84,7 @@ if (!fs.existsSync(output + '')) {
 }
 
 // count the duration via starttime and endtime 
-var dura = moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds')
+var dura = moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds');
 
 // main code
 ffmpeg(inputfile)
@@ -94,11 +94,11 @@ ffmpeg(inputfile)
     console.log(commandLine);
   })
   .on('end', function(stdout, stderr) {
-    util.log( 'Successed!' )
+    util.log( 'Successed!' );
   })
   .setStartTime(st)
   .setDuration(dura)
-  .save( outputfile )
+  .save( outputfile );
 
 
 

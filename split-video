@@ -1,6 +1,12 @@
 #!/usr/bin/env node
-
-// Brief: This is a shell script for spliting video via ffmpeg.
+/*------------------------------------------------------------------------------
+| File: split-video
+| Description: This is a shell script for spliting video via ffmpeg.
+| Author: hanson <liangguohaun@gmail.com>
+| Github: https://github.com/liangguohaun
+| Last Modified: 2016-11-05 18:00
+|-------------------------------------------------------------------------------
+*/
 
 // require libs
 var fs = require('fs');
@@ -99,9 +105,6 @@ ffmpeg(inputfile)
   .setStartTime(st)
   .setDuration(dura)
   .save( outputfile );
-
-
-
 
 
 // vim: filetype=javascript syntax=javascript fdm=syntax ts=2 sw=2 sts=2 expandtab

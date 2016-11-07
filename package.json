@@ -5,7 +5,9 @@
   "main": "index.js",
   "dependencies": {
     "fluent-ffmpeg": "^2.1.0",
-    "yargs": "^6.3.0"
+    "yargs": "^6.3.0",
+    "moment": "^2.8.1",
+    "printf": "^0.2.5"
   },
   "devDependencies": {},
   "scripts": {

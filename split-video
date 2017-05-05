@@ -90,7 +90,7 @@ if (!fs.existsSync(output + '')) {
 }
 
 // count the duration via starttime and endtime 
-var dura = moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds');
+var dura = moment.duration(se) == 0 ? 3600*10 : moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds');
 
 // main code
 ffmpeg(inputfile)

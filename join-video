@@ -17,6 +17,7 @@ var printf = require('printf');
 var moment = require('moment');
 var ffmpeg = require('fluent-ffmpeg');
 var exec = require('child_process').exec;
+var glob = require('glob');
 
 // help message
 function help(exitcode = 0) {
@@ -28,32 +29,34 @@ function help(exitcode = 0) {
   console.log('');
   console.log('Options:');
   console.log(' -i  | --inputfile          inputfile to be split.');
+  console.log(' -d  | --inputdir           specifies the dir for searching inputfile, will ignore option "-i"');
   console.log(' -c  | --copy               merge in copy mode, faster, by default, set 0 in filter mode');
   console.log(' -s  | --size               outputfile size: 640x360');
   console.log(' -b  | --bitrate            video bitrate: 1024k');
-  console.log(' -ab | --abitrate           audio bitrate: 128k');
+  console.log(' -B  | --abitrate           audio bitrate: 128k');
   console.log(' -r  | --rate               video framerate: 29.7');
   console.log(' -l  | --aspect             set output frame aspect ratio: "4:3", "16:9" or 1.3333, 1.7777');
   console.log(' -a  | --autopad            enable auto-padding the output video');
   console.log(' -o  | --outputfile         specifies the outputfile');
-  console.log(' -id | --inputdir           specifies the dir for searching inputfile, will ignore option "-i"');
+  console.log(' -p  | --path               output path, defualt: "/tmp/output"');
   console.log(' -h  | --help               print helps');
   process.exit(exitcode);
 }
 
 // shell argv define
 var argv = require('yargs')
-  .alias('i',  'inputfile')
-  .alias('c',  'copy')
-  .alias('s',  'size')
-  .alias('b',  'bitrate')
-  .alias('ab', 'abitrate')
-  .alias('r',  'rate')
-  .alias('l',  'aspect')
-  .alias('a',  'autopad')
-  .alias('o',  'outputfile')
-  .alias('p',  'path')
-  .alias('h',  'help')
+  .alias('i', 'inputfile')
+  .alias('d', 'inputdir')
+  .alias('c', 'copy')
+  .alias('s', 'size')
+  .alias('b', 'bitrate')
+  .alias('B', 'abitrate')
+  .alias('r', 'rate')
+  .alias('l', 'aspect')
+  .alias('a', 'autopad')
+  .alias('o', 'outputfile')
+  .alias('p', 'path')
+  .alias('h', 'help')
   .argv;
 
 // debug mode setting
@@ -63,19 +66,26 @@ var debug = true;
 var tempdir = '/tmp/fulent_temp';
 var outputpath_default = '/tmp/output';
 var inputfiles = argv.i === undefined ? argv._ : argv.i;
+var inputdir   = argv.d;
 var copy       = argv.c === undefined || argv.c !== 0 ? 1 : 0;
 var size       = argv.s;
 var bitrate    = argv.b;
-var abitrate   = argv.ab;
+var abitrate   = argv.B;
 var rate       = argv.r;
 var aspect     = argv.l;
 var autopad    = argv.a;
 var outputfile = argv.o;
 var output     = argv.p === undefined ? outputpath_default : argv.p;
 
+// if set param --inputdir
+if (inputdir !== undefined) {
+  inputfiles = glob.sync(path.join(inputdir, '*'));
+}
+
 // print help message
 if (argv.h !== undefined) { help(); }
-if (inputfiles === undefined) { help(1); }
+if (inputfiles.length === 0) { help(1); }
+
 
 // debug mode
 if (debug) { console.log(argv); }
@@ -103,15 +113,15 @@ if (!fs.existsSync(output + '')) {
 
 if (copy) {
   inputfiles = inputfiles.map(function(item) {
-    return printf("file '%s'", item);
+    return printf("file '%s'", path.resolve(item));
   });
-  var cmd = printf('ffmpeg -f concat -i <(echo -e "%s") -c copy %s', inputfiles.join('\\n'), outputfile);
+  var cmd = printf('ffmpeg -f concat -safe 0 -i <(echo -e "%s") -c copy %s', inputfiles.join('\n'), outputfile);
   exec(cmd, {"shell":"/bin/bash"}, function(err, stdout, stderr) {
     if (err) { console.error(err); }
     console.log(stdout);
+    console.log('Merging finished !');
   });
   debug && console.log(cmd);
-  console.log('Merging finished !');
 } else {
   var ffmpeg = ffmpeg();
   inputfiles.forEach(function(item, i) {

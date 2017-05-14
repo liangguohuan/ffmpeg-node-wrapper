@@ -12,56 +12,75 @@
 var fs = require('fs');
 var path = require('path');
 var process = require('process');
-var util = require('util');
 var printf = require('printf');
 var moment = require('moment');
 var ffmpeg = require('fluent-ffmpeg');
-
-// help message
-function help(exitcode = 0) {
-  console.log('Desc:');
-  console.log(' This is a shell script file for spliting video via ffmpeg.');
-  console.log('');
-  console.log('Command:');
-  console.log(' split-video [opt]... [inputfile] [starttime] [endtime]');
-  console.log('');
-  console.log('Options:');
-  console.log(' -i | --inputfile          inputfile to be split.');
-  console.log(' -s | --starttime          split from time, format: [hh:mm:ss]');
-  console.log(' -e | --endtime            split end time, format:  [hh:mm:ss]');
-  console.log(' -o | --outputfile         specifies the outputfile');
-  console.log(' -p | --path               output path, defualt: "/tmp/output"');
-  console.log(' -a | --samedir            outputfile in the same dir, will auto rename outputfile');
-  console.log(' -h | --help               print helps');
-  process.exit(exitcode);
-}
-
-// debug mode setting
-var debug = true;
+var yargs = require('yargs');
 
 // shell argv define
-var argv = require('yargs')
-  .alias('i', 'inputfile')
-  .alias('s', 'starttime')
-  .alias('e', 'endtime')
-  .alias('p', 'path')
-  .alias('o', 'outputfile')
-  .alias('a', 'samedir')
+var _helpmsg = `
+This is a shell script file for spliting video via ffmpeg
+Usage:
+  $0 [inputfile] [starttime] [endtime] ...`;
+var argv = yargs.usage(_helpmsg)
+  .options({
+    't': {
+      alias: 'test',
+      describe: 'print info but do not run',
+      type: 'boolean'
+    },
+    'i': {
+      alias: 'inputfile',
+      describe: 'inputfile to be split',
+      type: 'string'
+    },
+    's': {
+      alias: 'starttime',
+      describe: 'split from time, format: [hh:mm:ss]',
+      type: 'string',
+      default: '00:00:00',
+    },
+    'e': {
+      alias: 'endtime',
+      describe: 'split end time, format:  [hh:mm:ss]',
+      type: 'string',
+      default: '10:00:00',
+    },
+    'o': {
+      alias: 'outputfile',
+      describe: 'specifies the outputfile',
+      type: 'string'
+    },
+    'p': {
+      alias: 'path',
+      describe: 'outputfile path',
+      type: 'string',
+      default: '/tmp/output'
+    },
+    'a': {
+      alias: 'samedir',
+      describe: 'auto rename outputfile in the same dir',
+      type: 'boolean'
+    }
+  })
   .alias('h', 'help')
+  .help('h')
   .argv;
 
-// init variables
-var outputpath_default = '/tmp/output';
-var inputfile  = argv.i === undefined ? argv._[0] : argv.i;
-var st         = argv.s === undefined ? argv._[1] : argv.s;
-var se         = argv.e === undefined ? argv._[2] : argv.e;
-var samedir    = argv.a === undefined ? false : true;
-var output     = argv.p === undefined ? outputpath_default : argv.p;
-var outputfile = argv.o;
+// show help without any param
+if (process.argv.length === 2) {
+  yargs.showHelp();
+  process.exit();
+}
 
-// print help message
-if (argv.h !== undefined) { help(); }
-if (inputfile === undefined) { help(1); }
+// init variables
+var debug      = argv.t;
+var inputfile  = argv._[0] !== undefined ? argv._[0] : argv.i;
+var st         = argv._[1] !== undefined ? argv._[1] : argv.s;
+var se         = argv._[2] !== undefined ? argv._[2] : argv.e;
+var samedir    = argv.a;
+var output     = argv.p;
+var outputfile = argv.o;
 
 // debug mode
 if (debug) { console.log(argv); }
@@ -90,17 +109,20 @@ if (!fs.existsSync(output + '')) {
 }
 
 // count the duration via starttime and endtime 
-var dura = moment.duration(se) === 0 ? 3600*10 : moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds') - 2;
+var xr = moment.duration(st).as('second') === 0 ? 0 : 2;
+var dura = moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds') - xr;
 
 // main code
 ffmpeg(inputfile)
   .audioCodec('copy')
   .videoCodec('copy')
   .on('start', function(commandLine) {
-    console.log(commandLine);
+    debug && console.log(commandLine);
+    debug && process.exit();
   })
   .on('end', function(stdout, stderr) {
-    util.log( 'Successed!' );
+    console.log( 'Successed!' );
+    console.log( 'outputfile: %s', outputfile);
   })
   .setStartTime(st)
   .setDuration(dura)

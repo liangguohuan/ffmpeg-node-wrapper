@@ -12,62 +12,108 @@
 var fs = require('fs');
 var path = require('path');
 var process = require('process');
-var util = require('util');
 var printf = require('printf');
 var moment = require('moment');
 var ffmpeg = require('fluent-ffmpeg');
 var exec = require('child_process').exec;
 var glob = require('glob');
+var yargs = require('yargs');
 
-// help message
-function help(exitcode = 0) {
-  console.log('Desc:');
-  console.log(' This is a shell script file for joining videos via ffmpeg.');
-  console.log('');
-  console.log('Command:');
-  console.log(' join-video [opt]... [inputfile]...');
-  console.log('');
-  console.log('Options:');
-  console.log(' -i  | --inputfile          inputfile to be split.');
-  console.log(' -d  | --inputdir           specifies the dir for searching inputfile, will ignore option "-i"');
-  console.log(' -c  | --copy               merge in copy mode, faster, by default, set 0 in filter mode');
-  console.log(' -s  | --size               outputfile size: 640x360');
-  console.log(' -b  | --bitrate            video bitrate: 1024k');
-  console.log(' -B  | --abitrate           audio bitrate: 128k');
-  console.log(' -r  | --rate               video framerate: 29.7');
-  console.log(' -l  | --aspect             set output frame aspect ratio: "4:3", "16:9" or 1.3333, 1.7777');
-  console.log(' -a  | --autopad            enable auto-padding the output video');
-  console.log(' -o  | --outputfile         specifies the outputfile');
-  console.log(' -p  | --path               output path, defualt: "/tmp/output"');
-  console.log(' -h  | --help               print helps');
-  process.exit(exitcode);
-}
+var log4js = require('log4js');
+var log4js_config = require("./log4js.json");
+
+// Warn: log to file will fail if process.exit() exec.
+// config log4js
+log4js.configure(log4js_config);
+var logger = log4js.getLogger('console');
+
 
 // shell argv define
-var argv = require('yargs')
-  .alias('i', 'inputfile')
-  .alias('d', 'inputdir')
-  .alias('c', 'copy')
-  .alias('s', 'size')
-  .alias('b', 'bitrate')
-  .alias('B', 'abitrate')
-  .alias('r', 'rate')
-  .alias('l', 'aspect')
-  .alias('a', 'autopad')
-  .alias('o', 'outputfile')
-  .alias('p', 'path')
+var _helpmsg = `
+This is a shell script file for joining videos via ffmpeg.
+Usage:
+  $0 [inputfile ...] ...`;
+var argv = yargs.usage(_helpmsg)
+  .options({
+    't': {
+      alias: 'test',
+      describe: 'print info but do not run',
+      type: 'boolean'
+    },
+    'i': {
+      alias: 'inputfile',
+      describe: 'inputfile to be split.',
+      type: 'array'
+    },
+    'd': {
+      alias: 'inputdir',
+      describe: 'the dir for searching inputfile, ignore option "-i"',
+      type: 'string'
+    },
+    'c': {
+      alias: 'copy',
+      describe: 'copy mode, faster, by default',
+      type: 'boolean',
+      default: true
+    },
+    's': {
+      alias: 'size',
+      describe: 'outputfile size: 640x360',
+      type: 'string'
+    },
+    'b': {
+      alias: 'bitrate',
+      describe: 'video bitrate: 1024k',
+      type: 'string'
+    },
+    'B': {
+      alias: 'abitrate',
+      describe: 'audio bitrate: 128k',
+      type: 'string'
+    },
+    'r': {
+      alias: 'rate',
+      describe: 'video framerate: 29.7',
+      type: 'string'
+    },
+    'l': {
+      alias: 'aspect',
+      describe: 'set output frame aspect ratio: "4:3" or "1.3333"',
+      type: 'string'
+    },
+    'a': {
+      alias: 'autopad',
+      describe: 'enable auto-padding the output video',
+      type: 'boolean'
+    },
+    'o': {
+      alias: 'outputfile',
+      describe: 'specifies the outputfile',
+      type: 'string'
+    },
+    'p': {
+      alias: 'path',
+      describe: 'output path',
+      type: 'string',
+      default: '/tmp/output'
+    }
+  })
   .alias('h', 'help')
+  .help('h')
   .argv;
 
-// debug mode setting
-var debug = true;
+// show help without any param
+if (process.argv.length === 2) {
+  yargs.showHelp();
+  process.exit();
+}
 
 // init variables
 var tempdir = '/tmp/fulent_temp';
-var outputpath_default = '/tmp/output';
+var debug      = argv.t;
 var inputfiles = argv.i === undefined ? argv._ : argv.i;
 var inputdir   = argv.d;
-var copy       = argv.c === undefined || argv.c !== 0 ? 1 : 0;
+var copy       = argv.c;
 var size       = argv.s;
 var bitrate    = argv.b;
 var abitrate   = argv.B;
@@ -75,23 +121,19 @@ var rate       = argv.r;
 var aspect     = argv.l;
 var autopad    = argv.a;
 var outputfile = argv.o;
-var output     = argv.p === undefined ? outputpath_default : argv.p;
+var output     = argv.p;
 
 // if set param --inputdir
 if (inputdir !== undefined) {
   inputfiles = glob.sync(path.join(inputdir, '*'));
 }
 
-// print help message
-if (argv.h !== undefined) { help(); }
-if (inputfiles.length === 0) { help(1); }
-
-
 // debug mode
-if (debug) { console.log(argv); }
+if (debug) { logger.debug(argv); }
+// process.exit();
 
-if (inputfiles === undefined || typeof(inputfiles) === 'string' || inputfiles.length < 2) {
-  console.error('inputfiles error, must be more then two inputfile');
+if (inputfiles.length < 2) {
+  logger.error('inputfiles error, must be more then two inputfile');
   process.exit(1);
 }
 
@@ -103,25 +145,24 @@ if (outputfile === undefined) {
   var outputfile = output + '/' + basename.replace( extname, printf('-%s-all%s', moment().format('X'), extname) );
 }
 
-debug && console.log('inputfiles:', inputfiles);
-debug && console.log('outputfile:', outputfile);
-
 // create ouput dir if it doesnt exists
 if (!fs.existsSync(output + '')) {
   fs.mkdir(output);
 }
 
-if (copy) {
+if (copy === true) {
   inputfiles = inputfiles.map(function(item) {
     return printf("file '%s'", path.resolve(item));
   });
-  var cmd = printf('ffmpeg -f concat -safe 0 -i <(echo -e "%s") -c copy %s', inputfiles.join('\n'), outputfile);
+  // will overwrite outputfile if outputfile already exists
+  var cmd = printf('yes | ffmpeg -f concat -safe 0 -i <(echo -e "%s") -c copy %s', inputfiles.join('\n'), outputfile);
+  debug && logger.debug(cmd);
+  debug && process.exit();
   exec(cmd, {"shell":"/bin/bash"}, function(err, stdout, stderr) {
-    if (err) { console.error(err); }
-    console.log(stdout);
-    console.log('Merging finished !');
+    if (err) { logger.error(err); }
+    logger.info('Merging finished !');
+    logger.info('outputfile: %s', outputfile);
   });
-  debug && console.log(cmd);
 } else {
   var ffmpeg = ffmpeg();
   inputfiles.forEach(function(item, i) {
@@ -138,18 +179,17 @@ if (copy) {
   // events listener
   ffmpeg
     .on('start', function(commandLine) {
-      console.log(commandLine);
-      /* process.exit(0); */
+      debug && logger.debug(commandLine);
+      debug && process.exit();
     })
     .on('error', function(err) {
-      console.log('An error occurred: ' + err.message);
+      logger.error('An error occurred: ' + err.message);
     })
     .on('end', function() {
-      console.log('Merging finished !');
-    });
-
-  // save outputfile
-  ffmpeg.mergeToFile(outputfile, tempdir);
+      logger.info('Merging finished !');
+      logger.info('outputfile: %s' % outputfile);
+    })
+    .mergeToFile(outputfile, tempdir);
 }
 
 

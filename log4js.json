@@ -1,0 +1,20 @@
+{
+    "appenders": [{
+            "type": "console",
+            "category": "console"
+        },
+        {
+            "category": "file",
+            "type": "file",
+            "filename": "/tmp/ffmpeg.log",
+            "maxLogSize": 1024,
+            "backups": 3
+        }
+    ],
+    "replaceConsole": true,
+    "levels": {
+        "log_file": "ALL",
+        "console": "ALL",
+        "log_date": "ALL"
+    }
+}

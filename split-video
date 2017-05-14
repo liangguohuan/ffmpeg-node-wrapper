@@ -16,6 +16,14 @@ var printf = require('printf');
 var moment = require('moment');
 var ffmpeg = require('fluent-ffmpeg');
 var yargs = require('yargs');
+var log4js = require('log4js');
+var log4js_config = require("./log4js.json");
+
+// Warn: log to file will fail if process.exit() exec.
+// config log4js
+log4js.configure(log4js_config);
+var logger = log4js.getLogger('console');
+
 
 // shell argv define
 var _helpmsg = `
@@ -83,11 +91,11 @@ var output     = argv.p;
 var outputfile = argv.o;
 
 // debug mode
-if (debug) { console.log(argv); }
+if (debug) { logger.debug(argv); }
 
 // check inputfile exists
 if (!fs.existsSync(inputfile + '')) {
-  console.error('inputfile doesnt exists!!');
+  logger.error('inputfile doesnt exists!!');
   process.exit(1);
 }
 
@@ -117,12 +125,12 @@ ffmpeg(inputfile)
   .audioCodec('copy')
   .videoCodec('copy')
   .on('start', function(commandLine) {
-    debug && console.log(commandLine);
+    debug && logger.debug(commandLine);
     debug && process.exit();
   })
   .on('end', function(stdout, stderr) {
-    console.log( 'Successed!' );
-    console.log( 'outputfile: %s', outputfile);
+    logger.info( 'Successed!' );
+    logger.info( 'outputfile: %s', outputfile);
   })
   .setStartTime(st)
   .setDuration(dura)

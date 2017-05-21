@@ -12,6 +12,7 @@
 var fs = require('fs');
 var path = require('path');
 var process = require('process');
+var exec = require('child_process').exec;
 var printf = require('printf');
 var moment = require('moment');
 var ffmpeg = require('fluent-ffmpeg');
@@ -117,24 +118,33 @@ if (!fs.existsSync(output + '')) {
 }
 
 // count the duration via starttime and endtime 
-var xr = moment.duration(st).as('second') === 0 ? 0 : 2;
-var dura = moment.duration( moment.duration(se) - moment.duration(st) ).as('seconds') - xr;
+var dura = moment.duration( moment.duration(se) - moment.duration(st) ).as('second');
+var cmd = printf('ffmpeg -i "%s" -ss %s -t %s -c copy -avoid_negative_ts 1 "%s" -y', inputfile, st, dura, outputfile);
+
+debug && logger.debug(cmd);
+debug && process.exit();
+exec(cmd, {"shell":"/bin/bash"}, function(err, stdout, stderr) {
+  if (err) { logger.error(err); }
+  logger.info('Successed!');
+  logger.info('outputfile: %s', outputfile);
+});
 
 // main code
-ffmpeg(inputfile)
-  .audioCodec('copy')
-  .videoCodec('copy')
-  .on('start', function(commandLine) {
-    debug && logger.debug(commandLine);
-    debug && process.exit();
-  })
-  .on('end', function(stdout, stderr) {
-    logger.info( 'Successed!' );
-    logger.info( 'outputfile: %s', outputfile);
-  })
-  .setStartTime(st)
-  .setDuration(dura)
-  .save( outputfile );
+// ffmpeg(inputfile)
+  // .outputOptions('-avoid_negative_ts 1')
+  // .audioCodec('copy')
+  // .videoCodec('copy')
+  // .on('start', function(commandLine) {
+    // debug && logger.debug(commandLine);
+    // debug && process.exit();
+  // })
+  // .on('end', function(stdout, stderr) {
+    // logger.info( 'Successed!' );
+    // logger.info( 'outputfile: %s', outputfile);
+  // })
+  // .setStartTime(st)
+  // .setDuration(dura)
+  // .save( outputfile );
 
 
 // vim: filetype=javascript syntax=javascript fdm=syntax ts=2 sw=2 sts=2 expandtab
